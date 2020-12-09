@@ -21,25 +21,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--initial_point', type=int, default=1024, help='Point Number [256/512/1024/2048]')
-parser.add_argument('--validation', default=False, help='Split train data or not')
-parser.add_argument('--ensemble', default=False, help='Ensemble or not')
-parser.add_argument('--rotation_angle', default=np.pi/4, help='Rotate angle')
-parser.add_argument('--rotation_freq', default=8, help='Rotate time')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
-parser.add_argument('--num_point', default=[1024, 256, 128, 64], help='Point Number after down sampling')
-parser.add_argument('--num_sample', default=[32, 32, 32, 32], help='KNN query number')
+parser.add_argument('--num_point', default=[1024, 896, 768, 640], help='Point Number after down sampling')
+parser.add_argument('--num_sample', default=[128, 64, 48, 32], help='KNN query number')
 FLAGS = parser.parse_args()
 
 initial_point = FLAGS.initial_point
-VALID = FLAGS.validation
-ENSEMBLE = FLAGS.ensemble
-angle_rotation = FLAGS.rotation_angle
-freq_rotation = FLAGS.rotation_freq
 num_point = FLAGS.num_point
 num_sample = FLAGS.num_sample
-
-
 LOG_DIR = FLAGS.log_dir
+
 if not os.path.exists(LOG_DIR):
     os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train_eva.txt'), 'w')
@@ -166,6 +157,8 @@ def align(data, angle_x, angle_y, angle_z, translation, iterations, merged, tran
 
     mse = np.mean((angle_true-angle_pred)*(angle_true-angle_pred))
     mae = np.mean(np.abs(angle_true-angle_pred))
+    mse_t = np.mean((translation-t)*(translation-t))
+    mae_t = np.mean(np.abs(translation-t))
 
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(data)
@@ -182,7 +175,7 @@ def align(data, angle_x, angle_y, angle_z, translation, iterations, merged, tran
     # pcd_load_1.paint_uniform_color([59/255, 56/255, 56/255])
     # o3d.visualization.draw_geometries([pcd_load,pcd_load_1])
 
-    return mae, mse 
+    return mae, mse, mae_t, mse_t
 
 
 def main():
@@ -202,8 +195,10 @@ def main():
 
     mae = []
     mse = []
+    mae_T = []
+    mse_T = []
 
-    for i in range(valid_data.shape[0]): #valid_data.shape[0]
+    for i in reversed(range(valid_data.shape[0])): #valid_data.shape[0]
 
         np.random.seed(i)
         data = valid_data[i]
@@ -213,12 +208,14 @@ def main():
         translation = np.array([np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5), np.random.uniform(-0.5, 0.5)])
         translation = np.expand_dims(translation, axis=1)
         
-        mae_r, mse_r = align(data, angle_x, angle_y, angle_z, translation, 1, 1, True)
+        mae_r, mse_r, mae_t, mse_t = align(data, angle_x, angle_y, angle_z, translation, 1, 1, True)
 
         mae.append(mae_r)
         mse.append(mse_r)
+        mae_T.append(mae_t)
+        mse_T.append(mse_t)
             
-        print(i,valid_label[i], np.mean(np.array(mse)), np.mean(np.array(mae)), angle_x*180/np.pi, angle_y*180/np.pi, angle_z*180/np.pi)
+        print(i,valid_label[i], np.mean(np.array(mse)), np.sqrt(np.mean(np.array(mse))), np.mean(np.array(mae)), np.mean(np.array(mse_T)), np.sqrt(np.mean(np.array(mse_T))), np.mean(np.array(mae_T)))
 
 
     
