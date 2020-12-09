@@ -59,7 +59,7 @@ def npmat2euler(mats, deg, seq='zyx'):
 
 def transform(data, angle_x, angle_y, angle_z, translation):
 
-    data = data_utils.jitter_point_cloud(data)
+    # data = data_utils.jitter_point_cloud(data)
 
     rotation = Rotation.from_euler('zyx', [angle_z, angle_y, angle_x])
     data_rotated = rotation.apply(data) + translation.T
